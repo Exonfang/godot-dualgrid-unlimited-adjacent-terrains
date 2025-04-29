@@ -194,24 +194,24 @@ func calculate_display_tile_for_tiletype(_at_coords: Vector2i, _tiletype: TileTy
 	if occupied_key == [true, true, true, true]:
 		# check for bespoke mixes (which only exist for unique combinations of 2 tiles)
 		if _unique_tiles.size() == 2:
-			var count: int = 0
-			# for every tile in unique tiles, check if there's a bespoke mix
+			var opposite_tile: TileType
 			for tile: TileType in _unique_tiles:
-				# look through bespoke mix dict and see if that type exists
-				if tiletype_to_bespoke_mix.has(tile):
-					var mix_map: Dictionary[TileType, int]
-					mix_map = tiletype_to_bespoke_mix[tile]
-					var opposite_tile: TileType
-					if count == 0:
-						opposite_tile = _unique_tiles[1]
-					else:
-						opposite_tile = _unique_tiles[0]
-					# if the mix_map has the opposite tile, create the bespoke mix using its bespoke_offset.
-					if mix_map.has(opposite_tile):
-						var bespoke_offset: int
-						bespoke_offset = mix_map[opposite_tile]
-						return TERRAIN[tile_key] + Vector2i(bespoke_offset, 0)
-				count += 1
+				if tile != _tiletype:
+					opposite_tile = tile
+			if tiletype_to_bespoke_mix.has(_tiletype):
+				var mix_map: Dictionary[TileType, int]
+				mix_map = tiletype_to_bespoke_mix[_tiletype]
+				# if the mix_map has the opposite tile, create the bespoke mix using its bespoke_offset.
+				if mix_map.has(opposite_tile):
+					var bespoke_offset: int
+					bespoke_offset = mix_map[opposite_tile]
+					return TERRAIN[tile_key] + Vector2i(bespoke_offset, 0)
+			elif tiletype_to_bespoke_mix.has(opposite_tile):
+				var mix_map: Dictionary[TileType, int]
+				mix_map = tiletype_to_bespoke_mix[opposite_tile]
+				# if the opposite tile's mix_map has the tile, it will be created in another iteration
+				if mix_map.has(_tiletype):
+					return Vector2i(-1, -1)
 		# if there isn't a bespoke terrain, use the generic mix offset
 		return TERRAIN[tile_key] + Vector2i(MIXED_OFFSET, 0)
 	else:
