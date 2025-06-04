@@ -36,7 +36,7 @@ const TERRAIN: Dictionary[Array,Vector2i] = {
 	[true, false, false, false]: Vector2i(3,3)
 }
 const MIXED_OFFSET: int = 4 ## Added to x values of TERRAIN reference to fetch the MIXED variant of the dual grid tile.
-enum TileType { NONE, BLUE, GREEN, ORANGE, PURPLE, RED } ## Maps each unique terrain type.
+enum TileType { NONE, BLUE, GREEN, ORANGE, PURPLE, RED, MAGENTA_WALL, GREY_WALL } ## Maps each unique terrain type.
 ## Stores relationship of TileTypes to their Terrain's Source ID
 var tiletype_to_source_id: Dictionary[TileType, int] = {
 	TileType.NONE: -1,
@@ -44,7 +44,9 @@ var tiletype_to_source_id: Dictionary[TileType, int] = {
 	TileType.GREEN: 1,
 	TileType.ORANGE: 2,
 	TileType.PURPLE: 3,
-	TileType.RED: 4
+	TileType.RED: 4,
+	TileType.MAGENTA_WALL: 5,
+	TileType.GREY_WALL: 6,
 }
 var source_id_to_tiletype: Dictionary[int, TileType] ## Stores relationship of source IDs to TileTypes. This is built at _ready from tiletype_to_source_id.
 ## Example bespoke mix_map. This could be nested within tiletype_to_bespoke_mix if preferred.
@@ -67,7 +69,6 @@ func _ready() -> void:
 		for _position: Vector2i in get_used_cells():
 			set_display_tiles(_position)
 		hide()
-
 
 ## Call to update all display tiles in the DualGrid. This is not intended to be called when a single cell is updated.
 func update_all_tiles() -> void:
@@ -123,9 +124,10 @@ func calculate_display_tiles(_display_coords: Vector2i) -> void:
 	else:
 		# In the demo project, we want the botttom two tiles to appear in front of the top two tiles; because we're looping through the world neighborhood in top left, top right, bottom left, bottom right, by inversing the layers we paint here, we make sure that the bottom row of tiles always sits on top of the top row. Your project might want to inverse this depending on your terrain art.
 		var _tile_count: int = 0
-		for tile: TileType in unique_tiles:
+		for tile: TileType in world_neighborhood:
 			var paint_layer: TileMapLayer
 			var paint_layer_map: Dictionary[int, TileMapLayer]
+			# default behavior
 			if y_sort_fix == false:
 				# default behavior
 				paint_layer_map = {
@@ -190,6 +192,7 @@ func calculate_display_tile_for_tiletype(_at_coords: Vector2i, _tiletype: TileTy
 	var bottom_left_occupied: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[1])
 	var bottom_right_occupied: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[0])
 	var occupied_key: Array = [top_left_occupied, top_right_occupied, bottom_left_occupied, bottom_right_occupied]
+	# print("Generated occupied_key for ", _at_coords, ": ", occupied_key)
 	if occupied_key == [true, true, true, true]:
 		# check for bespoke mixes (which only exist for unique combinations of 2 tiles)
 		if _unique_tiles.size() == 2:
