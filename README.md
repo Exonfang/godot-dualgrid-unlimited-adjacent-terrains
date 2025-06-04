@@ -3,13 +3,15 @@ Adds a new "`DualGrid`" node (which extends `TileMapLayer`) to create a dual-gri
 
 Bespoke mixes can be optionally added for any combination of two terrains. In the example project, this is configured for the Purple terrain mixing with the Orange terrain.
 
-This allows the following five terrain sets to combine and create a world of endless terrain possibilities.
+This allows the following terrain sets to combine and create a world of endless terrain possibilities.
 
-![An example tileset with a bespoke mix configured.](example/tilesets/purple.png)
-![An example tileset](example/tilesets/blue.png)
-![An example tileset](example/tilesets/green.png)
-![An example tileset](example/tilesets/orange.png)
-![An example tileset](example/tilesets/red.png)
+![An example floor tileset with a bespoke mix configured.](example/tilesets/purple.png)
+![An example floor tileset](example/tilesets/blue.png)
+![An example floor tileset](example/tilesets/green.png)
+![An example floor tileset](example/tilesets/orange.png)
+![An example floor tileset](example/tilesets/red.png)
+![An example wall tileset](example/tilesets/grey_wall.png)
+![An example wall tileset](example/tilesets/magenta_wall.png)
 
 ![The result of the five tilesets combining](example.PNG)
 
@@ -19,14 +21,15 @@ Other Dual Grid implementations either require each unique terrain to sit on the
 
 - Supports unlimited terrain combinations while only requiring 29 unique tiles per terrain.
 - Supports unlimited bespoke terrain combinations to override the default generic mix tiles.
+- Easily supports overlaid tile art (See example project usage).
 - The display layers are default `TileMapLayer` nodes, which makes them easy to work with using Godot's existing toolset. No shader magic!
 - Particularly useful for sandbox games that need to support large number of terrains potentially appearing next to each other.
 
 ## Example Project
 
-This repository contains an example Godot 4.4 project [in /example/](/example/) with five terrains (and one bespoke mix) already configured in the new DualGrid custom class.
+This repository contains an example Godot 4.4 project [in /example/](/example/) with seven terrains (and one bespoke mix) already configured in the new DualGrid custom class.
 
-_**Important Note:** The example project modifies the default implementation to allow proper layering specific to this tile art and to catch an edge case with the layering logic. These modifications might be useful to review if your tile art might overlap._
+_**Important Note:** The example project modifies the default implementation to allow proper layering specific to the tile art. These modifications might be useful to review if your tile art might overlap, as you see in the example image._
 
 ## Basic Usage
 
