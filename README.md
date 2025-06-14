@@ -1,5 +1,5 @@
 # A DualGrid Tilemap System Supporting Unlimited Adjacent Terrains
-Adds a new "`DualGrid`" node (which extends `TileMapLayer`) to create a dual-grid tiling system for Godot which supports all mixes of adjacent terrains while still only requiring 29 unique tiles per terrain — **without requiring unique art for each bespoke mix**.
+Adds a new "`DualGrid`" node (which extends `TileMapLayer`) to create a dual-grid tiling system for Godot which supports all mixes of adjacent terrains while still only requiring 28 unique tiles per terrain — **without requiring unique art for each bespoke mix**.
 
 Bespoke mixes can be optionally added for any combination of two terrains. In the example project, this is configured for the Purple terrain mixing with the Orange terrain.
 
@@ -19,7 +19,7 @@ This allows the following terrain sets to combine and create a world of endless 
 
 Other Dual Grid implementations either require each unique terrain to sit on their own layer, require bespoke mixes for every unique combination of terrain, or achieve their visuals through complicated logic that's difficult to extend or directly interact with. This implmentation aims to fix these problems, and offers the following key advantages:
 
-- Supports unlimited terrain combinations while only requiring 29 unique tiles per terrain.
+- Supports unlimited terrain combinations while only requiring 28 unique tiles per terrain.
 - Supports unlimited bespoke terrain combinations to override the default generic mix tiles.
 - Easily supports overlaid tile art (See example project usage).
 - The display layers are default `TileMapLayer` nodes, which makes them easy to work with using Godot's existing toolset. No shader magic!
@@ -49,7 +49,7 @@ You will need to configure at least one terrain (and its associated `TileType`) 
 
 ### Configuring Terrains
 
-1. Add the new terrain to the Tile Set resource and add the required 29 tiles (0,3 in each terrain can be blank, this is used as an "alias" for use in the `DualGrid` directly in the example project). Each base `TileType` should be its own texture.
+1. Add the new terrain to the Tile Set resource and add the required 28 tiles (0,3 in each terrain can be blank, this is used as an "alias" for use in the `DualGrid` directly in the example project). Each base `TileType` should be its own texture.
 2. Update the `enum TileType` with your new constant to represent the new terrain. (Note, `TileType.NONE` is required, but you can remove the other example `TileType`s.)
 ```
 enum TileType { NONE, YOUR_NEW_TILE }
