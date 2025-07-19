@@ -51,7 +51,8 @@ var tiletype_to_source_id: Dictionary[TileType, int] = {
 var source_id_to_tiletype: Dictionary[int, TileType] ## Stores relationship of source IDs to TileTypes. This is built at _ready from tiletype_to_source_id.
 ## Example bespoke mix_map. This could be nested within tiletype_to_bespoke_mix if preferred.
 var purple_mix_map: Dictionary[TileType, int] = {
-	TileType.ORANGE: 8
+	TileType.ORANGE: 8,
+	TileType.RED: 12,
 }
 ## Maps bespoke mixes for any tilesets that have them. The int value is the X offset to that bespoke mix's terrain. The first bespoke mix will always be 8, and sequential bespoke mixes will be multiples of 4.
 var tiletype_to_bespoke_mix: Dictionary[TileType, Dictionary] = {
@@ -69,6 +70,7 @@ func _ready() -> void:
 		for _position: Vector2i in get_used_cells():
 			set_display_tiles(_position)
 		hide()
+
 
 ## Call to update all display tiles in the DualGrid. This is not intended to be called when a single cell is updated.
 func update_all_tiles() -> void:
@@ -121,32 +123,58 @@ func calculate_display_tiles(_display_coords: Vector2i) -> void:
 	if unique_tiles.size() == 1:
 		# display positions with only one terrain require only a single layer, so we can use a simplified function to save cpu.
 		mix_layer_1.set_cell(_display_coords, tiletype_to_source_id[unique_tiles[0]], calculate_display_tile(_display_coords))
-	else:
-		# In the demo project, we want the botttom two tiles to appear in front of the top two tiles; because we're looping through the world neighborhood in top left, top right, bottom left, bottom right, by inversing the layers we paint here, we make sure that the bottom row of tiles always sits on top of the top row. Your project might want to inverse this depending on your terrain art.
-		var _tile_count: int = 0
-		for tile: TileType in world_neighborhood:
-			var paint_layer: TileMapLayer
-			var paint_layer_map: Dictionary[int, TileMapLayer]
+		return
+	elif unique_tiles.size() == 2 and !world_neighborhood.has(TileType.NONE):
+		# check to see if there's a bespoke mix we can use
+		var first_tile: TileType = unique_tiles[0]
+		var second_tile: TileType = unique_tiles[1]
+		var tile_with_mix: TileType
+		var mix_map: Dictionary[TileType, int]
+		var bespoke_offset: int
+		if tiletype_to_bespoke_mix.has(first_tile):
+			mix_map = tiletype_to_bespoke_mix[first_tile]
+			if mix_map.has(second_tile):
+				bespoke_offset = mix_map[second_tile]
+				tile_with_mix = first_tile
+		if tiletype_to_bespoke_mix.has(second_tile):
+			mix_map = tiletype_to_bespoke_mix[second_tile]
+			if mix_map.has(first_tile):
+				bespoke_offset = mix_map[first_tile]
+				tile_with_mix = second_tile
+		if !mix_map.is_empty() and tile_with_mix != 0 and bespoke_offset != 0:
+			# we have a bespoke mix, only need a single layer
+			mix_layer_1.set_cell(_display_coords, tiletype_to_source_id[tile_with_mix], calculate_bespoke_display_tile(_display_coords, tile_with_mix, bespoke_offset))
+			return
+	
+	# if we reach here, there is no bespoke mix, use generics
+	
+	# In the demo project, we want the botttom two tiles to appear in front of the top two tiles; because we're looping through the world neighborhood in top left, top right, bottom left, bottom right, by inversing the layers we paint here, we make sure that the bottom row of tiles always sits on top of the top row. Your project might want to inverse this depending on your terrain art.
+	var _tile_count: int = 0
+	for tile: TileType in world_neighborhood:
+		var paint_layer: TileMapLayer
+		var paint_layer_map: Dictionary[int, TileMapLayer]
+		# default behavior
+		if y_sort_fix == false:
 			# default behavior
-			if y_sort_fix == false:
-				# default behavior
-				paint_layer_map = {
-					0: mix_layer_4,
-					1: mix_layer_3,
-					2: mix_layer_2,
-					3: mix_layer_1
-				}
-			else:
-				# Our Edge case (checking [X, Y, X, X]) takes action here
-				paint_layer_map = {
-					0: mix_layer_3,
-					1: mix_layer_4,
-					2: mix_layer_2,
-					3: mix_layer_1
-				}
-			paint_layer = paint_layer_map[_tile_count]
-			paint_layer.set_cell(_display_coords, tiletype_to_source_id[tile], calculate_display_tile_for_tiletype(_display_coords, tile, unique_tiles, _tile_count))
-			_tile_count += 1
+			paint_layer_map = {
+				0: mix_layer_4,
+				1: mix_layer_3,
+				2: mix_layer_2,
+				3: mix_layer_1
+			}
+		else:
+			# Our Edge case (checking [X, Y, X, X]) takes action here
+			paint_layer_map = {
+				0: mix_layer_3,
+				1: mix_layer_4,
+				2: mix_layer_2,
+				3: mix_layer_1
+			}
+		paint_layer = paint_layer_map[_tile_count]
+		
+		# check for bespoke mix existence to use, otherwise normal iteration
+		paint_layer.set_cell(_display_coords, tiletype_to_source_id[tile], calculate_display_tile_for_tiletype(_display_coords, tile, _tile_count))
+		_tile_count += 1
 
 
 ## Removes all display tiles for a given "display layer" position [member _at_coords]
@@ -176,8 +204,19 @@ func calculate_display_tile(_at_coords: Vector2i) -> Vector2i:
 	return TERRAIN[tile_key]
 
 
+## Calculate which bespoke display tile to use at [member _at_coords].
+func calculate_bespoke_display_tile(_at_coords: Vector2i, tile: TileType, offset: int) -> Vector2i:
+	var alias_id: int = tiletype_to_source_id[tile]
+	var top_left: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[3], alias_id)
+	var top_right: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[2], alias_id)
+	var bottom_left: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[1], alias_id)
+	var bottom_right: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[0], alias_id)
+	var tile_key: Array = [top_left, top_right, bottom_left, bottom_right]
+	return TERRAIN[tile_key] + Vector2i(offset, 0)
+
+
 ## Calculate which display tile to use at [member _at_coords] when there are more than one unique TileTypes in the neighborhood.
-func calculate_display_tile_for_tiletype(_at_coords: Vector2i, _tiletype: TileType, _unique_tiles: Array[TileType], _tile_count: int) -> Vector2i:
+func calculate_display_tile_for_tiletype(_at_coords: Vector2i, _tiletype: TileType, _tile_count: int) -> Vector2i:
 	var alias_id: int = tiletype_to_source_id[_tiletype]
 	var top_left: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[3], alias_id)
 	var top_right: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[2], alias_id)
@@ -194,27 +233,7 @@ func calculate_display_tile_for_tiletype(_at_coords: Vector2i, _tiletype: TileTy
 	var occupied_key: Array = [top_left_occupied, top_right_occupied, bottom_left_occupied, bottom_right_occupied]
 	# print("Generated occupied_key for ", _at_coords, ": ", occupied_key)
 	if occupied_key == [true, true, true, true]:
-		# check for bespoke mixes (which only exist for unique combinations of 2 tiles)
-		if _unique_tiles.size() == 2:
-			var opposite_tile: TileType
-			for tile: TileType in _unique_tiles:
-				if tile != _tiletype:
-					opposite_tile = tile
-			if tiletype_to_bespoke_mix.has(_tiletype):
-				var mix_map: Dictionary[TileType, int]
-				mix_map = tiletype_to_bespoke_mix[_tiletype]
-				# if the mix_map has the opposite tile, create the bespoke mix using its bespoke_offset.
-				if mix_map.has(opposite_tile):
-					var bespoke_offset: int
-					bespoke_offset = mix_map[opposite_tile]
-					return TERRAIN[tile_key] + Vector2i(bespoke_offset, 0)
-			elif tiletype_to_bespoke_mix.has(opposite_tile):
-				var mix_map: Dictionary[TileType, int]
-				mix_map = tiletype_to_bespoke_mix[opposite_tile]
-				# if the opposite tile's mix_map has the tile, it will be created in another iteration
-				if mix_map.has(_tiletype):
-					return Vector2i(-1, -1)
-		# if there isn't a bespoke terrain, use the generic mix offset
+		# new 
 		if tile_key == [true, false, false, true]:
 			if _tile_count == 3:
 				return Vector2i(3,3) + Vector2i(MIXED_OFFSET, 0)
