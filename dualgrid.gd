@@ -3,6 +3,15 @@ class_name DualGridTileMapLayer
 extends TileMapLayer
 ## DO NOT USE [method TileMapLayer.set_cell], use [method set_world_tile] instead
 
+@export_tool_button("Toggle Display Layer View") var display_view_toggle: Callable = func() -> void:
+    if _editor_display_layer_visible:
+        hide_display_layers()
+        _editor_display_layer_visible = false
+    else:
+        update_all_tiles()
+        show_display_layers()
+        _editor_display_layer_visible = true
+
 @export_storage var _mix_layer_1: TileMapLayer
 @export_storage var _mix_layer_2: TileMapLayer
 @export_storage var _mix_layer_3: TileMapLayer
@@ -36,6 +45,7 @@ const _NULL_SOURCE_ID: int = -1
 ## The atlas coords used when placing arbitrary world tiles using [method set_world_tile]
 const DEFAULT_WORLD_TILE_ATLAS_COORDS: Vector2i = Vector2i(0, 3)
 
+var _editor_display_layer_visible: bool = false
 var _dual_tile_set: DualGridTileSet:
     get:
         if not tile_set is DualGridTileSet:
@@ -66,22 +76,46 @@ func _get_configuration_warnings() -> PackedStringArray:
     return warnings
 
 
+## Handle connection to tile_set.changed signal to update the internal display layer tilemap position offsets
+func _set(property: StringName, value: Variant) -> bool:
+    if not property == &"tile_set":
+        return false
+
+    var new_tile_set: TileSet = value as TileSet
+    if tile_set == new_tile_set:
+        return false
+    if tile_set.changed.is_connected(_update_display_layer_position_offset):
+        tile_set.changed.disconnect(_update_display_layer_position_offset)
+    new_tile_set.changed.connect(_update_display_layer_position_offset)
+
+    return false
+
+
 func _setup_layers() -> void:
     if not _mix_layer_1: _mix_layer_1 = TileMapLayer.new()
     if not _mix_layer_2: _mix_layer_2 = TileMapLayer.new()
     if not _mix_layer_3: _mix_layer_3 = TileMapLayer.new()
     if not _mix_layer_4: _mix_layer_4 = TileMapLayer.new()
 
-    _mix_layer_1.tile_set = tile_set
-    _mix_layer_2.tile_set = tile_set
-    _mix_layer_3.tile_set = tile_set
-    _mix_layer_4.tile_set = tile_set
+    var mix_layers: Array[TileMapLayer] = [_mix_layer_1, _mix_layer_2, _mix_layer_3, _mix_layer_4]
 
-    add_child(_mix_layer_1)
-    add_child(_mix_layer_2)
-    add_child(_mix_layer_3)
-    add_child(_mix_layer_4)
+    for layer: TileMapLayer in mix_layers:
+        layer.tile_set = tile_set
+        layer.collision_enabled = false
+        layer.navigation_enabled = false
+        add_child(layer)
 
+    if is_instance_valid(tile_set):
+        _update_display_layer_position_offset()
+
+
+func _update_display_layer_position_offset() -> void:
+    var position_offset: Vector2i = -1 * tile_set.tile_size / 2
+    _mix_layer_1.position = position_offset
+    _mix_layer_2.position = position_offset
+    _mix_layer_3.position = position_offset
+    _mix_layer_4.position = position_offset
+    
 
 ## Makes the display layers visible and hides the world grid
 func show_display_layers() -> void:
