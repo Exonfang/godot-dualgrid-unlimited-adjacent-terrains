@@ -1,265 +1,255 @@
-class_name DualGrid extends TileMapLayer
-## A custom DualGrid implementation which combines this node with four TileMapLayer nodes to allow any terrain tile to sit directly next to any other terrain tile without requiring bespoke mixes for each combination, while requiring fewer tiles than Godot's default TileMapLayer terrain implementation. Bespoke mixes can be optionally added for any combination of two terrains.
-## 
-## The DualGrid is considered the "world layer" and contains the logical tiles used to build the "display layers". The world layer is completely hidden at runtime and the "display layers" combine to create the illusion of the tiles placed in the "world layer" created in this DualGrid. Instead of visually drawing borders at the edges of tiles, borders are drawn through the center of each tile which allows only four peering neighbors to significantly reduce the required tiles to create functioning terrains (15 terrain tiles, and 15 generic mix tiles per terrain). By using four display layers instead of just one, any tile can sit directly next to any other tile without requiring bespoke mixes for each combination. If desired, bespoke mixes can easily be added for any combination of two terrains, which overwrite the generic mixes when the entire world neighborhood is occupied.
-## 
-## @tutorial(GitHub Repo, with usage outlines): https://github.com/Exonfang/dualgrid
+@tool
+class_name DualGridTileMapLayer
+extends TileMapLayer
+## DO NOT USE [method TileMapLayer.set_cell], use [method set_world_tile] instead
 
+@export_storage var _mix_layer_1: TileMapLayer
+@export_storage var _mix_layer_2: TileMapLayer
+@export_storage var _mix_layer_3: TileMapLayer
+@export_storage var _mix_layer_4: TileMapLayer
 
-@export var mix_layer_1: TileMapLayer ## The first display layer used to create the illusion of the tiles on the DualGrid.
-@export var mix_layer_2: TileMapLayer ## The second display layer used to create the illusion of the tiles on the DualGrid.
-@export var mix_layer_3: TileMapLayer ## The third display layer used to create the illusion of the tiles on the DualGrid.
-@export var mix_layer_4: TileMapLayer ## The fourth display layer used to create the illusion of the tiles on the DualGrid.
-const NEIGHBORS: Array[Vector2i] = [Vector2i(0,0), Vector2i(1,0), Vector2i(0,1), Vector2i(1,1)] ## When world or display layers need to reference each other, they use the NEIGHBORS offsets, which correspond to the contributing four tiles from the other "world" or "display" layer. They are ordered in top left, top right, bottom left, bottom right.
-
-## Terrain peering dictionary. Referenced to determine which tile in the 4x4 TileSet resource is to be used to achieve the illusion of the terrains. The Array of bools is comprised of the occupied status of the four [member NEIGHBORS] (top left, top right, bottom left, bototm right).
-const TERRAIN: Dictionary[Array,Vector2i] = {
-	# top row
-	[false, false, true, false]: Vector2i(0,0),
-	[false, true, false, true]: Vector2i(1,0),
-	[true, false, true, true]: Vector2i(2,0),
-	[false, false, true, true]: Vector2i(3,0),
-	# top middle row
-	[true, false, false, true]: Vector2i(0,1),
-	[false, true, true, true]: Vector2i(1,1),
-	[true, true, true, true]: Vector2i(2,1),
-	[true, true, true, false]: Vector2i(3,1),
-	# bottom middle row
-	[false, true, false, false]: Vector2i(0,2),
-	[true, true, false, false]: Vector2i(1,2),
-	[true, true, false, true]: Vector2i(2,2),
-	[true, false, true, false]: Vector2i(3,2),
-	# bottom row
-	[false, false, false, false]: Vector2i(-1,-1), ## empty cell (0,3 is used for the alias instead of being blank)
-	[false, false, false, true]: Vector2i(1,3),
-	[false, true, true, false]: Vector2i(2,3),
-	[true, false, false, false]: Vector2i(3,3)
+const _NEIGHBOURS: Array[Vector2i] = [Vector2i(0,0), Vector2i(1,0), Vector2i(0,1), Vector2i(1,1)]
+const _TERRAIN: Dictionary[Array, Vector2i] = {
+    # top row
+    [false, false, true, false]: Vector2i(0,0),
+    [false, true, false, true]: Vector2i(1,0),
+    [true, false, true, true]: Vector2i(2,0),
+    [false, false, true, true]: Vector2i(3,0),
+    # top middle row
+    [true, false, false, true]: Vector2i(0,1),
+    [false, true, true, true]: Vector2i(1,1),
+    [true, true, true, true]: Vector2i(2,1),
+    [true, true, true, false]: Vector2i(3,1),
+    # bottom middle row
+    [false, true, false, false]: Vector2i(0,2),
+    [true, true, false, false]: Vector2i(1,2),
+    [true, true, false, true]: Vector2i(2,2),
+    [true, false, true, false]: Vector2i(3,2),
+    # bottom row
+    [false, false, false, false]: Vector2i(-1,-1),
+    [false, false, false, true]: Vector2i(1,3),
+    [false, true, true, false]: Vector2i(2,3),
+    [true, false, false, false]: Vector2i(3,3)
 }
-const MIXED_OFFSET: int = 4 ## Added to x values of TERRAIN reference to fetch the MIXED variant of the dual grid tile.
-enum TileType { NONE, YOUR_NEW_TILE, YOUR_NEW_TILE_2 } ## Maps each unique terrain type.
-## Stores relationship of TileTypes to their Terrain's Source ID
-var tiletype_to_source_id: Dictionary[TileType, int] = {
-	TileType.NONE: -1,
-	TileType.YOUR_NEW_TILE: 0,
-	TileType.YOUR_NEW_TILE_2: 1,
-}
-var source_id_to_tiletype: Dictionary[int, TileType] ## Stores relationship of source IDs to TileTypes. This is built at _ready from tiletype_to_source_id.
-## Example bespoke mix_map. This could be nested within tiletype_to_bespoke_mix if preferred.
-var your_new_tile_mix_map: Dictionary[TileType, int] = {
-	TileType.YOUR_NEW_TILE_2: 8
-}
-## Maps bespoke mixes for any tilesets that have them. The int value is the X offset to that bespoke mix's terrain. The first bespoke mix will always be 8, and sequential bespoke mixes will be multiples of 4.
-var tiletype_to_bespoke_mix: Dictionary[TileType, Dictionary] = {
-	TileType.YOUR_NEW_TILE: your_new_tile_mix_map
-}
+const _MIXED_OFFSET: int = 4
+const _NULL_SOURCE_ID: int = -1
+## The atlas coords used when placing arbitrary world tiles using [method set_world_tile]
+const DEFAULT_WORLD_TILE_ATLAS_COORDS: Vector2i = Vector2i(0, 3)
+
+var _dual_tile_set: DualGridTileSet:
+    get:
+        if not tile_set is DualGridTileSet:
+            return null
+        return tile_set as DualGridTileSet
 
 
-## Builds source_id_to_tiletype from tiletype_to_source_id and creates display tiles for all occupied positions in the DualGrid.
 func _ready() -> void:
-	# builds source_id_to_tiletype from tiletype_to_source_id dict
-	for key: TileType in tiletype_to_source_id.keys():
-		source_id_to_tiletype[tiletype_to_source_id[key]] = key
-	# set initial display tiles for the "display layers"
-	if not Engine.is_editor_hint():
-		for _position: Vector2i in get_used_cells():
-			set_display_tiles(_position)
-		hide()
+    _setup_layers()
+
+    if not Engine.is_editor_hint():
+        show_display_layers()
+    else:
+        hide_display_layers()
 
 
-## Call to update all display tiles in the DualGrid. This is not intended to be called when a single cell is updated.
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_EDITOR_PRE_SAVE:
+        _cache_display_layers()
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+    var warnings: PackedStringArray = []
+
+    if not tile_set is DualGridTileSet:
+        warnings.append("DualGridTileMap only supports bespoke mixing with a DualGridTileSet as its TileSet.")
+
+    return warnings
+
+
+func _setup_layers() -> void:
+    if not _mix_layer_1: _mix_layer_1 = TileMapLayer.new()
+    if not _mix_layer_2: _mix_layer_2 = TileMapLayer.new()
+    if not _mix_layer_3: _mix_layer_3 = TileMapLayer.new()
+    if not _mix_layer_4: _mix_layer_4 = TileMapLayer.new()
+
+    _mix_layer_1.tile_set = tile_set
+    _mix_layer_2.tile_set = tile_set
+    _mix_layer_3.tile_set = tile_set
+    _mix_layer_4.tile_set = tile_set
+
+    add_child(_mix_layer_1)
+    add_child(_mix_layer_2)
+    add_child(_mix_layer_3)
+    add_child(_mix_layer_4)
+
+
+## Makes the display layers visible and hides the world grid
+func show_display_layers() -> void:
+    self_modulate.a = 0.0
+    _mix_layer_1.show()
+    _mix_layer_2.show()
+    _mix_layer_3.show()
+    _mix_layer_4.show()
+
+
+## Makes the display layers invisible and reveals the world grid
+func hide_display_layers() -> void:
+    self_modulate.a = 1.0
+    _mix_layer_1.hide()
+    _mix_layer_2.hide()
+    _mix_layer_3.hide()
+    _mix_layer_4.hide()
+
+
+## Sets a tile on the world grid based on the source_id and updates the display tiles for that world tile
+func set_world_tile(world_coords: Vector2i, source_id: int) -> void:
+    set_cell(world_coords, source_id, DEFAULT_WORLD_TILE_ATLAS_COORDS)
+    _set_display_tiles_for_world_tile(world_coords)
+
+
+## Forcibly updates the display layers for all world grid tiles. Use sparingly, will cause a lag spike
 func update_all_tiles() -> void:
-	for _coord: Vector2i in get_used_cells():
-		set_display_tiles(_coord)
+    for world_coords: Vector2i in get_used_cells():
+        _set_display_tiles_for_world_tile(world_coords)
 
 
-## Called to update the four display tiles for a given [member at_coords] "world layer" position.
-func set_display_tiles(_at_coords: Vector2i) -> void:
-	# loop through the display neighborhood
-	for neighbor: int in range(NEIGHBORS.size()):
-		var display_coords: Vector2i = _at_coords + NEIGHBORS[neighbor]
-		calculate_display_tiles(display_coords)
+func _set_display_tiles_for_world_tile(world_coords: Vector2i) -> void:
+    for neighbour: int in range(_NEIGHBOURS.size()):
+        var display_coords: Vector2i = world_coords + _NEIGHBOURS[neighbour]
+        _calculate_display_tiles(display_coords)
 
 
-## Creates display tiles at the "display layer" position [member _display_coords] across the four "display layers" based on the neighborhood of the "world layer".
-func calculate_display_tiles(_display_coords: Vector2i) -> void:
-	# loop through the world neighborhood, building an array of tiletypes (top left, top right, bottom left, bottom right)
-	var world_neighborhood: Array[TileType]
-	for neighbor: int in range(NEIGHBORS.size()):
-		var world_coords: Vector2i = _display_coords - NEIGHBORS[neighbor]
-		world_neighborhood.append(get_world_tile(world_coords))
-	
-	## This creates a readable neighborhood string to aid in debugging or extending. Uncomment to utilize.
-	#var pretty_world_neighborhood: String = ""
-	#var count: int = 0
-	#for tile: TileType in world_neighborhood:
-		#if count != 0:
-			#pretty_world_neighborhood += ", "
-		#count += 1
-		#pretty_world_neighborhood += str(TileType.keys()[tile])
-	#print("world_neighborhood (at ", _display_coords, "): ", pretty_world_neighborhood)
-	
-	# build a unique tiles array so we can determine which display layers to update.
-	var tiles_excluding_empty: Array[TileType] = world_neighborhood.filter(is_tile_filled)
-	var unique_tiles: Array[TileType]
-	for tile: TileType in tiles_excluding_empty:
-		if !unique_tiles.has(tile):
-			unique_tiles.append(tile)
-	
-	remove_display_tiles(_display_coords) # clear any tiles in the display position we're about to update.
-	if unique_tiles.size() == 1:
-		# display positions with only one terrain require only a single layer, so we can use a simplified function to save cpu.
-		mix_layer_1.set_cell(_display_coords, tiletype_to_source_id[unique_tiles[0]], calculate_display_tile(_display_coords))
-		return
-	elif unique_tiles.size() == 2 and !world_neighborhood.has(TileType.NONE):
-		# check to see if there's a bespoke mix we can use
-		var first_tile: TileType = unique_tiles[0]
-		var second_tile: TileType = unique_tiles[1]
-		var tile_with_mix: TileType
-		var mix_map: Dictionary[TileType, int]
-		var bespoke_offset: int
-		if tiletype_to_bespoke_mix.has(first_tile):
-			mix_map = tiletype_to_bespoke_mix[first_tile]
-			if mix_map.has(second_tile):
-				bespoke_offset = mix_map[second_tile]
-				tile_with_mix = first_tile
-		if tiletype_to_bespoke_mix.has(second_tile):
-			mix_map = tiletype_to_bespoke_mix[second_tile]
-			if mix_map.has(first_tile):
-				bespoke_offset = mix_map[first_tile]
-				tile_with_mix = second_tile
-		if !mix_map.is_empty() and tile_with_mix != 0 and bespoke_offset != 0:
-			# we have a bespoke mix, only need a single layer
-			mix_layer_1.set_cell(_display_coords, tiletype_to_source_id[tile_with_mix], calculate_bespoke_display_tile(_display_coords, tile_with_mix, bespoke_offset))
-			return
-	
-	# if we reach here, there is no bespoke mix, use generics
-	
-	var _tile_count: int = 0
-	for tile: TileType in world_neighborhood:
-		var paint_layer: TileMapLayer
-		var paint_layer_map: Dictionary[int, TileMapLayer]
-		paint_layer_map = {
-			0: mix_layer_1,
-			1: mix_layer_2,
-			2: mix_layer_3,
-			3: mix_layer_4
-		}
-		paint_layer = paint_layer_map[_tile_count]
-		
-		# check for bespoke mix existence to use, otherwise normal iteration
-		paint_layer.set_cell(_display_coords, tiletype_to_source_id[tile], calculate_display_tile_for_tiletype(_display_coords, tile, _tile_count))
-		_tile_count += 1
+func _calculate_display_tiles(display_coords: Vector2i) -> void:
+    var neighbouring_sources: Array[int] = []
+    for neighbour: int in range(_NEIGHBOURS.size()):
+        var world_coords: Vector2i = display_coords - _NEIGHBOURS[neighbour]
+        neighbouring_sources.append(get_cell_source_id(world_coords))
+    
+    var sources_excluding_empty: Array[int] = neighbouring_sources.filter(func(source_id: int) -> bool: return source_id != _NULL_SOURCE_ID)
+    var unique_sources: Array[int] = []
+    for source_id: int in sources_excluding_empty:
+        if not unique_sources.has(source_id):
+            unique_sources.append(source_id)
+    
+    _remove_display_tiles(display_coords)
+    
+    if unique_sources.size() == 1:
+        _mix_layer_1.set_cell(display_coords, unique_sources[0], _calculate_display_tile(display_coords))
+        return
+
+    if unique_sources.size() == 2 and not neighbouring_sources.has(_NULL_SOURCE_ID) and _dual_tile_set:
+        var mix_data: Array = _dual_tile_set.get_bespoke_mix(unique_sources[0], unique_sources[1])
+        if not mix_data.is_empty():
+            var primary_id: int = mix_data[0]
+            var offset: int = mix_data[1]
+            _mix_layer_1.set_cell(
+                display_coords, 
+                primary_id, 
+                _calculate_bespoke_display_tile(display_coords, primary_id, offset)
+            )
+            return
+
+    var paint_layers: Array[TileMapLayer] = [_mix_layer_4, _mix_layer_3, _mix_layer_2, _mix_layer_1]
+    for i: int in range(neighbouring_sources.size()):
+        var source_id: int = neighbouring_sources[i]
+
+        if source_id == -1:
+            paint_layers[i].set_cell(display_coords, _NULL_SOURCE_ID)
+            continue
+
+        paint_layers[i].set_cell(
+            display_coords, 
+            source_id, 
+            _calculate_display_tile_for_source_id(display_coords, source_id, i)
+        )
 
 
-## Removes all display tiles for a given "display layer" position [member _at_coords]
-func remove_display_tiles(_at_coords: Vector2i) -> void:
-	mix_layer_1.set_cell(_at_coords, -1)
-	mix_layer_2.set_cell(_at_coords, -1)
-	mix_layer_3.set_cell(_at_coords, -1)
-	mix_layer_4.set_cell(_at_coords, -1)
+func _remove_display_tiles(display_coords: Vector2i) -> void:
+    _mix_layer_1.set_cell(display_coords, _NULL_SOURCE_ID)
+    _mix_layer_2.set_cell(display_coords, _NULL_SOURCE_ID)
+    _mix_layer_3.set_cell(display_coords, _NULL_SOURCE_ID)
+    _mix_layer_4.set_cell(display_coords, _NULL_SOURCE_ID)
 
 
-## Filtering function which returns true when the provided [member tile] is not TileType.NONE.
-func is_tile_filled(tile: TileType) -> bool:
-	if tile == TileType.NONE:
-		return false
-	else:
-		return true
+func _calculate_display_tile(world_coords: Vector2i) -> Vector2i:
+    var top_left: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[3])
+    var top_right: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[2])
+    var bottom_left: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[1])
+    var bottom_right: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[0])
+    return _TERRAIN[[top_left, top_right, bottom_left, bottom_right]]
 
 
-## Calculate which display tile to use at [member _at_coords]. This is a simplified version of [method calculate_display_tile_for_tiletype] used when there is only a single unique tiletype in the neighborhood.
-func calculate_display_tile(_at_coords: Vector2i) -> Vector2i:
-	var top_left: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[3])
-	var top_right: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[2])
-	var bottom_left: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[1])
-	var bottom_right: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[0])
-	var tile_key: Array = [top_left, top_right, bottom_left, bottom_right]
-	# print("Generated tile key for ", _at_coords, ": ", tile_key)
-	return TERRAIN[tile_key]
+func _calculate_bespoke_display_tile(world_coords: Vector2i, source_id: int, offset: int) -> Vector2i:
+    var top_left: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[3], source_id)
+    var top_right: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[2], source_id)
+    var bottom_left: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[1], source_id)
+    var bottom_right: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[0], source_id)
+    return _TERRAIN[[top_left, top_right, bottom_left, bottom_right]] + Vector2i(offset, 0)
 
 
-## Calculate which bespoke display tile to use at [member _at_coords].
-func calculate_bespoke_display_tile(_at_coords: Vector2i, tile: TileType, offset: int) -> Vector2i:
-	var alias_id: int = tiletype_to_source_id[tile]
-	var top_left: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[3], alias_id)
-	var top_right: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[2], alias_id)
-	var bottom_left: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[1], alias_id)
-	var bottom_right: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[0], alias_id)
-	var tile_key: Array = [top_left, top_right, bottom_left, bottom_right]
-	return TERRAIN[tile_key] + Vector2i(offset, 0)
+func _calculate_display_tile_for_source_id(world_coords: Vector2i, source_id: int, tile_count: int) -> Vector2i:
+    var top_left: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[3], source_id)
+    var top_right: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[2], source_id)
+    var bottom_left: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[1], source_id)
+    var bottom_right: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[0], source_id)
+    var tile_key: Array = [top_left, top_right, bottom_left, bottom_right]
+
+    var top_left_occupied: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[3])
+    var top_right_occupied: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[2])
+    var bottom_left_occupied: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[1])
+    var bottom_right_occupied: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[0])
+    var occupied_key: Array = [top_left_occupied, top_right_occupied, bottom_left_occupied, bottom_right_occupied]
+
+    if occupied_key == [true, true, true, true]:
+        if tile_key == [true, false, false, true]:
+            if tile_count == 3:
+                return Vector2i(3,3) + Vector2i(_MIXED_OFFSET, 0)
+            elif tile_count == 0:
+                return Vector2i(1,3) + Vector2i(_MIXED_OFFSET, 0)
+            else:
+                return _TERRAIN[tile_key] + Vector2i(_MIXED_OFFSET, 0)
+        if tile_key == [false, true, true, false]:
+            if tile_count == 2:
+                return Vector2i(0,2) + Vector2i(_MIXED_OFFSET, 0)
+            elif tile_count == 1:
+                return Vector2i(0,0) + Vector2i(_MIXED_OFFSET, 0)
+            else:
+                return _TERRAIN[tile_key] + Vector2i(_MIXED_OFFSET, 0)
+        else:
+            return _TERRAIN[tile_key] + Vector2i(_MIXED_OFFSET, 0)
+    else:
+        if tile_key == [true, false, false, true]:
+            if tile_count == 3:
+                return Vector2i(3,3)
+            elif tile_count == 0:
+                return Vector2i(1,3)
+            else:
+                return _TERRAIN[tile_key]
+        if tile_key == [false, true, true, false]:
+            if tile_count == 2:
+                return Vector2i(0,2)
+            elif tile_count == 1:
+                return Vector2i(0,0)
+            else:
+                return _TERRAIN[tile_key]
+        else:
+            return _TERRAIN[tile_key]
 
 
-## Calculate which display tile to use at [member _at_coords] when there are more than one unique TileTypes in the neighborhood.
-func calculate_display_tile_for_tiletype(_at_coords: Vector2i, _tiletype: TileType, _tile_count: int) -> Vector2i:
-	var alias_id: int = tiletype_to_source_id[_tiletype]
-	var top_left: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[3], alias_id)
-	var top_right: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[2], alias_id)
-	var bottom_left: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[1], alias_id)
-	var bottom_right: bool = get_world_tile_occupied_with_alias(_at_coords - NEIGHBORS[0], alias_id)
-	var tile_key: Array = [top_left, top_right, bottom_left, bottom_right]
-	# print("Generated tile_key for ", _at_coords, ": ", tile_key)
-
-	# check for all tiles occupied, so we know when to use the mixed version of the terrain
-	var top_left_occupied: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[3])
-	var top_right_occupied: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[2])
-	var bottom_left_occupied: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[1])
-	var bottom_right_occupied: bool = get_world_tile_occupied(_at_coords - NEIGHBORS[0])
-	var occupied_key: Array = [top_left_occupied, top_right_occupied, bottom_left_occupied, bottom_right_occupied]
-	# print("Generated occupied_key for ", _at_coords, ": ", occupied_key)
-	if occupied_key == [true, true, true, true]:
-		# new 
-		if tile_key == [true, false, false, true]:
-			if _tile_count == 3:
-				return Vector2i(3,3) + Vector2i(MIXED_OFFSET, 0)
-			elif _tile_count == 0:
-				return Vector2i(1,3) + Vector2i(MIXED_OFFSET, 0)
-			else:
-				return TERRAIN[tile_key] + Vector2i(MIXED_OFFSET, 0)
-		if tile_key == [false, true, true, false]:
-			if _tile_count == 2:
-				return Vector2i(0,2) + Vector2i(MIXED_OFFSET, 0)
-			elif _tile_count == 1:
-				return Vector2i(0,0) + Vector2i(MIXED_OFFSET, 0)
-			else:
-				return TERRAIN[tile_key] + Vector2i(MIXED_OFFSET, 0)
-		else:
-			return TERRAIN[tile_key] + Vector2i(MIXED_OFFSET, 0)
-	else:
-		if tile_key == [true, false, false, true]:
-			if _tile_count == 3:
-				return Vector2i(3,3)
-			elif _tile_count == 0:
-				return Vector2i(1,3)
-			else:
-				return TERRAIN[tile_key]
-		if tile_key == [false, true, true, false]:
-			if _tile_count == 2:
-				return Vector2i(0,2)
-			elif _tile_count == 1:
-				return Vector2i(0,0)
-			else:
-				return TERRAIN[tile_key]
-		else:
-			return TERRAIN[tile_key]
+func _is_world_tile_occupied(world_coords: Vector2i) -> bool:
+    return get_cell_source_id(world_coords) != _NULL_SOURCE_ID
 
 
-## Returns true if world tile is occupied at [member _at_coords].
-func get_world_tile_occupied(_at_coords: Vector2i) -> bool:
-	if get_cell_source_id(_at_coords) != -1:
-		return true
-	else:
-		return false
+func _is_world_tile_occupied_by_source(world_coords: Vector2i, souce_id: int) -> bool:
+    if souce_id == _NULL_SOURCE_ID:
+        return false
+    return get_cell_source_id(world_coords) == souce_id
 
 
-## Returns true if world tile [member _at_coords] is occupied with a cell of [member _alias_id]. Helper function for [method calculate_display_tile_for_tiletype].
-func get_world_tile_occupied_with_alias(_at_coords: Vector2i, _alias_id: int) -> bool:
-	if get_cell_source_id(_at_coords) == _alias_id:
-		return true
-	else:
-		return false
+func _cache_display_layers() -> void:
+    _mix_layer_1.clear()
+    _mix_layer_2.clear()
+    _mix_layer_3.clear()
+    _mix_layer_4.clear()
 
-
-## Gets the world tile (in TileType) for the given world position [member _at_coords]. Helper function for [method calculate_display_tiles]
-func get_world_tile(_at_coords: Vector2i) -> TileType:
-	var source_id: int = get_cell_source_id(_at_coords)
-	return source_id_to_tiletype[source_id]
+    update_all_tiles()
