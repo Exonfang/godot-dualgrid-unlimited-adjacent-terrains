@@ -1,6 +1,7 @@
 @tool
 class_name DualGridTileSet
 extends TileSet
+## A TileSet with extended functionality to support bespoke tile mixing in a [DualGridTileMapLayer]
 
 ## List of bespoke mixes configured for this TileSet.
 @export var bespoke_mixes: Array[BespokeMixRule]
