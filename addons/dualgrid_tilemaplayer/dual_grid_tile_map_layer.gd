@@ -4,7 +4,10 @@ extends TileMapLayer
 ## A custom DualGrid implementation which allows any terrain tile to sit directly next to any other terrain 
 ## tile without requiring bespoke mixes for each combination, while requiring fewer tiles than Godot's default TileMapLayer terrain implementation. 
 ## Bespoke mixes can be optionally added for any combination of two terrains.
-##
+## [br]
+## Changes to the DualGridTileMapLayer's properties, including but not limited to material and modulation (see [member INHERITED_PROPERTIES])
+## are passed down to the internal TileMapLayers for the display layers.
+## [br]
 ## The DualGrid is considered the "world layer" and contains the logical tiles used to build the "display layers". 
 ## The world layer is completely hidden at runtime and the "display layers" combine to create the illusion of the tiles placed in the "world layer" created in this DualGrid. 
 ## Instead of visually drawing borders at the edges of tiles, borders are drawn through the center of each tile which allows 
@@ -64,7 +67,7 @@ var _mix_layers: Array[TileMapLayer]:
         return _mix_layers
 
 ## List of properties which should be inherited by the inner display TileMapLayers
-const _INHERITED_PROPERTIES: Array[StringName] = [
+const INHERITED_PROPERTIES: Array[StringName] = [
     # TileMapLayer
     &"tile_set",
     &"enabled",
@@ -162,7 +165,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 ## Handle connection to tile_set.changed signal to update the internal display layer tilemap position offsets.
 ## Propagate changes to inhertited properties down to the internal TileMapLayers
 func _set(property: StringName, value: Variant) -> bool:
-    if _INHERITED_PROPERTIES.has(property):
+    if INHERITED_PROPERTIES.has(property):
         _set_display_layer_property(property, value)
 
     if property == &"tile_set":
