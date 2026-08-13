@@ -15,7 +15,7 @@ extends TileMapLayer
 ## To set tiles in the world grid at runtime, do not use [method TileMapLayer.set_cell], use [method set_world_tile] instead
 ## @tutorial(GitHub Repo, with usage outlines): https://github.com/Exonfang/dualgrid
 
-@export_tool_button("Toggle Display Layer View") var display_view_toggle: Callable = func() -> void:
+@export_tool_button("Toggle Display Layer Preview", "GuiVisibilityVisible") var display_preview_toggle: Callable = func() -> void:
     if _editor_display_layer_visible:
         hide_display_layers()
         _editor_display_layer_visible = false
@@ -23,12 +23,45 @@ extends TileMapLayer
         update_all_tiles()
         show_display_layers()
         _editor_display_layer_visible = true
+@export_tool_button("Refresh Display Layer Preview", "Anchor") var display_preview_refresh: Callable = func() -> void:
+    if _editor_display_layer_visible:
+        update_all_tiles()
+
+
+@export_group("Display Layer Ordering")
+## When the display layer preview is enabled in the editor, enables changes to the layer ordering to update the preview.
+## Enabling this for large tile maps could be quite laggy.
+@export var live_ordering_update_preview: bool = true
+## Reverse the default layering order, dependant on your tile set art style. 
+@export var reverse_default_layering_order: bool = false:
+    set(value):
+        reverse_default_layering_order = value
+        if _editor_display_layer_visible and live_ordering_update_preview:
+            update_all_tiles()
+
+## A collection of [LayerOrderOverrideRules] to accomadate cases where the default ordering produces unwanted layering results.
+@export var layering_order_rules: Array[LayerOrderOverrideRule]:
+    set(value):
+        for rule: LayerOrderOverrideRule in layering_order_rules:
+            if not is_instance_valid(rule): continue
+            if rule.changed.is_connected(_on_layer_order_exception_rule_changed):
+                rule.changed.disconnect(_on_layer_order_exception_rule_changed)
+
+        layering_order_rules = value
+        for rule: LayerOrderOverrideRule in layering_order_rules:
+            if not is_instance_valid(rule): continue
+            rule.changed.connect(_on_layer_order_exception_rule_changed)
 
 @export_storage var _mix_layer_1: TileMapLayer
 @export_storage var _mix_layer_2: TileMapLayer
 @export_storage var _mix_layer_3: TileMapLayer
 @export_storage var _mix_layer_4: TileMapLayer
-var _mix_layers: Array[TileMapLayer]
+var _mix_layers: Array[TileMapLayer]:
+    get():
+        if _mix_layers.is_empty():
+            if not is_instance_valid(_mix_layer_1): _setup_layers()
+            else: _mix_layers = [_mix_layer_1, _mix_layer_2, _mix_layer_3, _mix_layer_4]
+        return _mix_layers
 
 ## List of properties which should be inherited by the inner display TileMapLayers
 const _INHERITED_PROPERTIES: Array[StringName] = [
@@ -41,7 +74,6 @@ const _INHERITED_PROPERTIES: Array[StringName] = [
     &"rendering_quadrant_size",
 
     # CanvasItem
-    # &"modulate",
     &"show_behind_parent",
     &"top_level",
     &"clip_children",
@@ -130,17 +162,21 @@ func _get_configuration_warnings() -> PackedStringArray:
 ## Handle connection to tile_set.changed signal to update the internal display layer tilemap position offsets.
 ## Propagate changes to inhertited properties down to the internal TileMapLayers
 func _set(property: StringName, value: Variant) -> bool:
-    if property == &"tile_set":
-        var new_tile_set: TileSet = value as TileSet
-        if tile_set != new_tile_set:
-            if tile_set.changed.is_connected(_update_display_layer_position_offset):
-                tile_set.changed.disconnect(_update_display_layer_position_offset)
-            new_tile_set.changed.connect(_update_display_layer_position_offset)
-
     if _INHERITED_PROPERTIES.has(property):
         _set_display_layer_property(property, value)
 
+    if property == &"tile_set":
+        var new_tile_set: TileSet = value as TileSet
+        if tile_set != new_tile_set:
+            if is_instance_valid(tile_set) and tile_set.changed.is_connected(_update_display_layer_position_offset):
+                tile_set.changed.disconnect(_update_display_layer_position_offset)
+            new_tile_set.changed.connect(_update_display_layer_position_offset)
+            tile_set = new_tile_set
+            update_configuration_warnings()
+            return true
+
     return false
+
 
 ## Sets a property on all internal TileMapLayers
 func _set_display_layer_property(property: StringName, value: Variant) -> void:
@@ -166,20 +202,22 @@ func _setup_layers() -> void:
         _update_display_layer_position_offset()
 
 
+## Position the display tileset layers to be offset by half the tileset size so that the display aligns visually with
+## the properties of the world layer.
 func _update_display_layer_position_offset() -> void:
     var position_offset: Vector2i = -1 * tile_set.tile_size / 2
     for layer: TileMapLayer in _mix_layers:
         layer.position = position_offset
     
 
-## Makes the display layers visible and hides the world grid
+## Makes the display layers visible and hides the world grid.
 func show_display_layers() -> void:
     self_modulate.a = 0.0
     for layer: TileMapLayer in _mix_layers:
         layer.show()
 
 
-## Makes the display layers invisible and reveals the world grid
+## Makes the display layers invisible and reveals the world grid.
 func hide_display_layers() -> void:
     self_modulate.a = 1.0
     for layer: TileMapLayer in _mix_layers:
@@ -194,6 +232,8 @@ func set_world_tile(world_coords: Vector2i, source_id: int) -> void:
 
 ## Forcibly updates the display layers for all world grid tiles. Use sparingly, will cause a lag spike
 func update_all_tiles() -> void:
+    for layer: TileMapLayer in _mix_layers:
+        layer.clear()
     for world_coords: Vector2i in get_used_cells():
         _set_display_tiles_for_world_tile(world_coords)
 
@@ -239,12 +279,26 @@ func _calculate_display_tiles(display_coords: Vector2i) -> void:
             _mix_layer_1.set_cell(display_coords, primary_id, bespoke_tile_atlas_coords)
             return
 
-    # Without a bespoke mix, generic mixing is necessary
+
+    # Default generic mixing layer order
     var paint_layers: Array[TileMapLayer] = [_mix_layer_4, _mix_layer_3, _mix_layer_2, _mix_layer_1]
+    if reverse_default_layering_order:
+        paint_layers.reverse()
+
+    # Check for layer ordering exceptions
+    var active_rule: LayerOrderOverrideRule 
+    if not layering_order_rules.is_empty():
+        active_rule = _get_layer_order_exception(neighbouring_source_ids) 
+        if active_rule:
+            paint_layers.clear()
+            for i: int in range(4):
+                paint_layers.append(_mix_layers[active_rule.order[i]])
+    
+    # Can now paint layers according to the calculated layer ordering
     for i: int in range(neighbouring_source_ids.size()):
         var source_id: int = neighbouring_source_ids[i]
 
-        if source_id == -1:
+        if source_id == _NULL_SOURCE_ID:
             paint_layers[i].set_cell(display_coords, _NULL_SOURCE_ID)
             continue
 
@@ -255,6 +309,36 @@ func _calculate_display_tiles(display_coords: Vector2i) -> void:
         )
 
 
+## Checks if this configuration of a tile neighbourhood matches any of the layer order overrides.
+## Return null if no exception is found
+func _get_layer_order_exception(neighbourhood_ids: Array[int]) -> LayerOrderOverrideRule:
+    for rule: LayerOrderOverrideRule in layering_order_rules:
+        if not is_instance_valid(rule): continue
+        var target: int
+        var has_target: bool = false
+        var rule_matches: bool = true
+        
+        for i: int in range(4):
+            if (rule.mask & (1 << i)) != 0:
+                if not has_target:
+                    target = neighbourhood_ids[i]
+                    has_target = true
+                elif neighbourhood_ids[i] != target:
+                    rule_matches = false
+                    break
+        
+        if rule_matches:
+            return rule
+
+    return null
+
+
+## Function for updating the editor display layer preview if a layer order override rule changes.
+func _on_layer_order_exception_rule_changed() -> void:
+    if _editor_display_layer_visible and live_ordering_update_preview:
+        update_all_tiles()
+
+
 ## Remove display tiles from all mix layers at the given display coordinates
 func _remove_display_tiles(display_coords: Vector2i) -> void:
     _mix_layer_1.set_cell(display_coords, _NULL_SOURCE_ID)
@@ -263,7 +347,7 @@ func _remove_display_tiles(display_coords: Vector2i) -> void:
     _mix_layer_4.set_cell(display_coords, _NULL_SOURCE_ID)
 
 
-## Calculate which display tiles to use at a world coordinate when it is know that all 4 neighbours are from the same source id
+## Calculate which display tiles to use at a world coordinate when it is know that all 4 neighbours are from the same source id.
 func _calculate_display_tile(world_coords: Vector2i) -> Vector2i:
     var top_left: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[3])
     var top_right: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[2])
@@ -281,7 +365,7 @@ func _calculate_bespoke_display_tile(world_coords: Vector2i, source_id: int, off
     return _TERRAIN[[top_left, top_right, bottom_left, bottom_right]] + Vector2i(offset, 0)
 
 
-## Calculate which display tile to use at world coordinate when there are more than one unique source id in the neighborhood
+## Calculate which display tile to use at world coordinate when there are more than one unique source id in the neighborhood.
 func _calculate_display_tile_for_source_id(world_coords: Vector2i, source_id: int, tile_count: int) -> Vector2i:
     var top_left: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[3], source_id)
     var top_right: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[2], source_id)
@@ -289,7 +373,7 @@ func _calculate_display_tile_for_source_id(world_coords: Vector2i, source_id: in
     var bottom_right: bool = _is_world_tile_occupied_by_source(world_coords - _NEIGHBOURS[0], source_id)
     var tile_key: Array = [top_left, top_right, bottom_left, bottom_right]
 
-	# check for all tiles occupied, so we know when to use the mixed version of the terrain
+	# Check for all tiles occupied, so we know when to use the mixed version of the terrain.
     var top_left_occupied: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[3])
     var top_right_occupied: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[2])
     var bottom_left_occupied: bool = _is_world_tile_occupied(world_coords - _NEIGHBOURS[1])
@@ -343,9 +427,4 @@ func _is_world_tile_occupied_by_source(world_coords: Vector2i, souce_id: int) ->
 
 
 func _cache_display_layers() -> void:
-    _mix_layer_1.clear()
-    _mix_layer_2.clear()
-    _mix_layer_3.clear()
-    _mix_layer_4.clear()
-
     update_all_tiles()
