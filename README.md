@@ -17,7 +17,7 @@ This allows the following terrain sets to combine and create a world of endless 
 
 ## Key Advantages Over Other Dual Grid Systems
 
-Other Dual Grid implementations either require each unique terrain to sit on their own layer, require bespoke mixes for every unique combination of terrain, or achieve their visuals through complicated logic that's difficult to extend or directly interact with. This implmentation aims to fix these problems, and offers the following key advantages:
+Other Dual Grid implementations either require each unique terrain to sit on their own layer, require bespoke mixes for every unique combination of terrain, or achieve their visuals through complicated logic that's difficult to extend or directly interact with. This implementation aims to fix these problems, and offers the following key advantages:
 
 - Supports unlimited terrain combinations while only requiring 28 unique tiles per terrain.
 - Supports unlimited bespoke terrain combinations to override the default generic mix tiles.
