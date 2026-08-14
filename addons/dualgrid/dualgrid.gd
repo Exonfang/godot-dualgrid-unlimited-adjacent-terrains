@@ -236,34 +236,6 @@ func _sync_inherited_properties() -> void:
 		_set_display_layer_property(property, get(property))
 
 
-## Makes the display layers visible and hides the world grid.
-func show_display_layers() -> void:
-	self_modulate.a = 0.0
-	for layer: TileMapLayer in _mix_layers:
-		layer.show()
-
-
-## Makes the display layers invisible and reveals the world grid.
-func hide_display_layers() -> void:
-	self_modulate.a = 1.0
-	for layer: TileMapLayer in _mix_layers:
-		layer.hide()
-
-
-## Sets a tile on the world grid based on the source_id and updates the display tiles for that world tile
-func set_world_tile(world_coords: Vector2i, source_id: int) -> void:
-	set_cell(world_coords, source_id, DEFAULT_WORLD_TILE_ATLAS_COORDS)
-	_set_display_tiles_for_world_tile(world_coords)
-
-
-## Forcibly updates the display layers for all world grid tiles. Use sparingly, will cause a lag spike
-func update_all_tiles() -> void:
-	for layer: TileMapLayer in _mix_layers:
-		layer.clear()
-	for world_coords: Vector2i in get_used_cells():
-		_set_display_tiles_for_world_tile(world_coords)
-
-
 ## Updates the display layer tiles for the world tile
 func _set_display_tiles_for_world_tile(world_coords: Vector2i) -> void:
 	for neighbor: int in range(_NEIGHBORS.size()):
@@ -452,3 +424,31 @@ func _is_world_tile_occupied_by_source(world_coords: Vector2i, souce_id: int) ->
 
 func _cache_display_layers() -> void:
 	update_all_tiles()
+
+
+## Makes the display layers visible and hides the world grid.
+func show_display_layers() -> void:
+	self_modulate.a = 0.0
+	for layer: TileMapLayer in _mix_layers:
+		layer.show()
+
+
+## Makes the display layers invisible and reveals the world grid.
+func hide_display_layers() -> void:
+	self_modulate.a = 1.0
+	for layer: TileMapLayer in _mix_layers:
+		layer.hide()
+
+
+## Sets a tile on the world grid based on the source_id and updates the display tiles for that world tile
+func set_world_tile(world_coords: Vector2i, source_id: int) -> void:
+	set_cell(world_coords, source_id, DEFAULT_WORLD_TILE_ATLAS_COORDS)
+	_set_display_tiles_for_world_tile(world_coords)
+
+
+## Forcibly updates the display layers for all world grid tiles. Use sparingly, will cause a lag spike
+func update_all_tiles() -> void:
+	for layer: TileMapLayer in _mix_layers:
+		layer.clear()
+	for world_coords: Vector2i in get_used_cells():
+		_set_display_tiles_for_world_tile(world_coords)
