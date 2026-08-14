@@ -70,8 +70,6 @@ If you've already integrated version 1, here are some instructions to get your i
 
 I was inspired to create and post this project under the MIT license because of the dedicated and amazing Godot Community. I intend on using this system for several of my own projects, so I will be actively maintaining this repository for the forseeable future. I welcome any contributions from the community!
 
-**Important Note:** Do not contribute PRs for isometric or hex tiles — there are already better implementations for those (see [TileMapDual by pablogila](https://github.com/pablogila/TileMapDual)).
-
 ## License and Required Disclosures
 
 ### License
