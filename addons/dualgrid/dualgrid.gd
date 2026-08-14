@@ -423,6 +423,7 @@ func _is_world_tile_occupied_by_source(world_coords: Vector2i, souce_id: int) ->
 
 
 func _cache_display_layers() -> void:
+	_sync_inherited_properties()
 	update_all_tiles()
 
 
