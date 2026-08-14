@@ -26,12 +26,14 @@ extends TileMapLayer
 		hide_display_layers()
 		_editor_display_layer_visible = false
 	else:
+		_sync_inherited_properties()
 		update_all_tiles()
 		show_display_layers()
 		_editor_display_layer_visible = true
 
 @export_tool_button("Refresh Display Layer Preview", "Anchor") var display_preview_refresh: Callable = func() -> void:
 	if _editor_display_layer_visible:
+		_sync_inherited_properties()
 		update_all_tiles()
 
 ## Enables collision on the internal display TileMapLayers.
@@ -214,8 +216,7 @@ func _setup_layers() -> void:
 	for layer: TileMapLayer in _mix_layers:
 		add_child(layer)
 
-	for property: StringName in INHERITED_PROPERTIES:
-		_set_display_layer_property(property, get(property))
+	_sync_inherited_properties()
 	_set_display_layer_property(&"collision_enabled", display_collision_enabled)
 	_set_display_layer_property(&"navigation_enabled", display_navigation_enabled)
 
@@ -228,7 +229,12 @@ func _update_display_layer_position_offset() -> void:
 	var position_offset: Vector2i = -1 * tile_set.tile_size / 2
 	for layer: TileMapLayer in _mix_layers:
 		layer.position = position_offset
-	
+
+
+func _sync_inherited_properties() -> void:
+	for property: StringName in INHERITED_PROPERTIES:
+		_set_display_layer_property(property, get(property))
+
 
 ## Makes the display layers visible and hides the world grid.
 func show_display_layers() -> void:
