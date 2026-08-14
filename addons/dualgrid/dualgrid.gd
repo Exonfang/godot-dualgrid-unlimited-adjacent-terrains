@@ -34,6 +34,13 @@ extends TileMapLayer
 	if _editor_display_layer_visible:
 		update_all_tiles()
 
+## Enables collision on the internal display TileMapLayers.
+@export var display_collision_enabled: bool = false:
+	set(value):
+		display_collision_enabled = value
+		if is_instance_valid(_mix_layer_1):
+			_set_display_layer_property(&"collision_enabled", value)
+
 @export_group("Display Layer Ordering")
 ## When the display layer preview is enabled in the editor, enables changes to the layer ordering to update the preview. Enabling this for large tile maps could be quite laggy.
 @export var live_ordering_update_preview: bool = true
@@ -199,7 +206,7 @@ func _setup_layers() -> void:
 
 	for layer: TileMapLayer in _mix_layers:
 		layer.tile_set = tile_set
-		layer.collision_enabled = false
+		layer.collision_enabled = display_collision_enabled
 		layer.navigation_enabled = false
 		add_child(layer)
 
