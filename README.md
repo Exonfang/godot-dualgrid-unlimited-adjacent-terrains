@@ -39,7 +39,7 @@ Install the plugin by adding `addons/dualgrid` to your Godot Project, then in **
 
 ## Basic Usage
 
-Configure your `DualGridTileSet` just as you would configure a normal TileSet, and adjust its variables according to your art. 
+Configure your `DualGridTileSet` just as you would configure a normal TileSet, and adjust its variables according to your art. See **Configuring Terrains** to setup any bespoke mixes.
 
 For tiles that should not need to actually overlap with each other, no `LayerOrderOverrideRule`s should be required. If your tiles might overlap with each other, for example, to create the illusion of depth or walls, you may need to create one or more `LayerOrderOverrideRule` depending on your specific art. You can see examples of a `LayerOrderOverrideRule` configuration [in the example scene](example/example.tscn).
 
@@ -51,6 +51,14 @@ If your tiles extend in the opposite direction as the example artwork, **Reverse
 
 1. Create your terrain within the `DualGridTileSet` resource. At minimum, add the required 28 tiles (0,3 in each terrain can be blank, this is used as an "alias" for use in the `DualGrid` directly in the example project. Placing any tile from the terrain in the DualGrid qualifies for that tile occupying that world tile). Each base `TileType` should be its own texture.
 2.  If you've created any bespoke mixes, create `BespokeMixRule` where the **Primary Source ID** is set to its source id, and the **Secondary Source ID** is set to the terrain that set of tiles is mixing with. Finally, specify the **Atlas Offset** which references the offset for this mix set in the **Primary Source ID** terrain.  (In the example project, in the Purple `TileType`, the Orange mix is offset by 8 and the Red mix is offset by 12). These are not required!
+
+## Upgrading from version 1 to version 2
+
+1. Install and enable the new DualGrid addon, according to **Installation**. 
+2. Comment out the class_name declaration line from the old `dualgrid.gd` in your project to prevent a class_name conflict.
+2. Convert your `TileSet` resource to a `DualGridTileSet` resource. 
+3. In the `DualGridTileSet` and transmute your `tile_mix_map` configurations into `BespokeMixRule`(s).
+4. If you previously made any specific adjustments for edge cases similar to the example project, instead of editing the addon directly, configuring `LayerOrderOverrideRule`(s) for the `DualGrid` should be sufficient.
 
 ## Contributing
 
