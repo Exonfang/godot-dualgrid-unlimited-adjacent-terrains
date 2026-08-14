@@ -78,11 +78,11 @@ I was inspired to create and post this project under the MIT license because of 
 This project is released under the [MIT License](LICENSE)
 
 ### References
-Other developers have great Dual Grid implementations, especially if you need Isometric or Hex tile support. I highly recommend reviewing their projects in case their implementations might be a better fit for your project. They were also huge inspirations for this project!
+This project would not have been possible without other developers who created their own Dual Grid implementations and shared that code openly. They were a huge inspiration for this project!
 
 - [Dual Grid Tilemap System for Godot in GDScript by GlitchedinOrbit](https://github.com/GlitchedinOrbit/dual-grid-tilemap-system-godot-gdscript)
 - [Dual Grid Tilemap System in Godot by jess-hammer](https://github.com/jess-hammer/dual-grid-tilemap-system-godot)
-- [TileMapDual by pablogila](https://github.com/pablogila/TileMapDual)
+- [TileMapDual by pablogila](https://github.com/pablogila/TileMapDual) - Isometric or Hex tile support.
 - [Jess::codes's "Draw fewer tiles - by using a Dual-Grid system" Video](https://www.youtube.com/watch?v=jEWFSv3ivTg)
 - [This particular feature proposal comment in TileMapDual by megonemad1](https://github.com/pablogila/TileMapDual/issues/32)
 
