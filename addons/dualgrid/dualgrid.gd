@@ -35,11 +35,18 @@ extends TileMapLayer
 		update_all_tiles()
 
 ## Enables collision on the internal display TileMapLayers.
-@export var display_collision_enabled: bool = false:
+@export var display_collision_enabled: bool = true:
 	set(value):
 		display_collision_enabled = value
 		if is_instance_valid(_mix_layer_1):
 			_set_display_layer_property(&"collision_enabled", value)
+
+## Enables navigation on the internal display TileMapLayers.
+@export var display_navigation_enabled: bool = false:
+	set(value):
+		display_navigation_enabled = value
+		if is_instance_valid(_mix_layer_1):
+			_set_display_layer_property(&"navigation_enabled", value)
 
 @export_group("Display Layer Ordering")
 ## When the display layer preview is enabled in the editor, enables changes to the layer ordering to update the preview. Enabling this for large tile maps could be quite laggy.
@@ -84,6 +91,10 @@ const INHERITED_PROPERTIES: Array[StringName] = [
 	&"y_sort_origin",
 	&"x_draw_order_reversed",
 	&"rendering_quadrant_size",
+	&"physics_quadrant_size",
+	&"use_kinematic_bodies",
+	&"collision_visibility_mode",
+	&"navigation_visibility_mode",
 
 	# CanvasItem
 	&"show_behind_parent",
@@ -98,14 +109,13 @@ const INHERITED_PROPERTIES: Array[StringName] = [
 	&"y_sort_enabled",
 	&"texture_filter",
 	&"texture_repeat",
-	&"material",
-	&"use_parent_material",
 
 	# Node / Object
 	&"process_mode",
 	&"process_priority",
 	&"process_physics_priority",
 	&"process_thread_group",
+	&"physics_interpolation_mode",
 ]
 
 ## When world or display layers need to reference each other, they use the NEIGHBORS offsets, which correspond to the contributing four tiles from the other "world" or "display" layer. They are ordered in top left, top right, bottom left, bottom right.
@@ -174,9 +184,6 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 ## Handle connection to tile_set.changed signal to update the internal display layer tilemap position offsets. Propagate changes to inhertited properties down to the internal TileMapLayers
 func _set(property: StringName, value: Variant) -> bool:
-	if INHERITED_PROPERTIES.has(property):
-		_set_display_layer_property(property, value)
-
 	if property == &"tile_set":
 		var new_tile_set: TileSet = value as TileSet
 		if tile_set != new_tile_set:
@@ -205,10 +212,12 @@ func _setup_layers() -> void:
 	_mix_layers = [_mix_layer_1, _mix_layer_2, _mix_layer_3, _mix_layer_4]
 
 	for layer: TileMapLayer in _mix_layers:
-		layer.tile_set = tile_set
-		layer.collision_enabled = display_collision_enabled
-		layer.navigation_enabled = false
 		add_child(layer)
+
+	for property: StringName in INHERITED_PROPERTIES:
+		_set_display_layer_property(property, get(property))
+	_set_display_layer_property(&"collision_enabled", display_collision_enabled)
+	_set_display_layer_property(&"navigation_enabled", display_navigation_enabled)
 
 	if is_instance_valid(tile_set):
 		_update_display_layer_position_offset()
