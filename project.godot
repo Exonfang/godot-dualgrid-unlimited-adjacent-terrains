@@ -21,7 +21,7 @@ window/stretch/aspect="expand"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/dualgrid_tilemaplayer/plugin.cfg")
+enabled=PackedStringArray("res://addons/dualgrid/plugin.cfg")
 
 [physics]
 

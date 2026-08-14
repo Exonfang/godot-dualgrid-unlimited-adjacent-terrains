@@ -1,4 +1,5 @@
 @tool
+@icon("res://addons/dualgrid/dualgrid.svg")
 class_name DualGrid
 extends TileMapLayer
 ## A custom DualGrid implementation which allows any terrain tile to sit directly next to any other terrain tile without requiring bespoke mixes for each combination, while requiring fewer tiles than Godot's default TileMapLayer terrain implementation. Bespoke mixes can be optionally added for any combination of two terrains.
