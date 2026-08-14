@@ -2,6 +2,7 @@
 extends EditorProperty
 class_name EditorPropertyLayerOverride
 
+
 var grid: GridContainer
 var buttons: Array[Button] = []
 var updating: bool = false
@@ -14,12 +15,12 @@ func _init() -> void:
 	add_child(grid)
 	set_bottom_editor(grid)
 
-	for i in range(4):
+	for i: int in range(4):
 		var button: Button = Button.new()
 		button.custom_minimum_size = Vector2(48, 48)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		
+
 		button.gui_input.connect(_on_button_gui_input.bind(i))
 		grid.add_child(button)
 		buttons.append(button)
@@ -31,10 +32,10 @@ func _update_property() -> void:
 	if not object or not object is LayerOrderOverrideRule:
 		updating = false
 		return
-	
+
 	var order_rule: LayerOrderOverrideRule = object as LayerOrderOverrideRule
 
-	for i in range(4):
+	for i: int in range(4):
 		var is_enabled: bool = (order_rule.mask & (1 << i)) != 0
 		var order_val: int = order_rule.order[i]
 
@@ -61,10 +62,10 @@ func _on_button_gui_input(event: InputEvent, quad_idx: int) -> void:
 
 
 func _toggle_quadrant_mask(quad_idx: int) -> void:
-	var object = get_edited_object()
+	var object: Object = get_edited_object()
 	if not object or not object is LayerOrderOverrideRule:
 		return
-	
+
 	var order_rule: LayerOrderOverrideRule = object as LayerOrderOverrideRule
 
 	# toggle the bit in mask for this quadrant
@@ -75,7 +76,7 @@ func _toggle_quadrant_mask(quad_idx: int) -> void:
 
 
 func _cycle_quadrant_order(quad_idx: int) -> void:
-	var object = get_edited_object()
+	var object: Object = get_edited_object()
 	if not object or not object is LayerOrderOverrideRule:
 		return
 
