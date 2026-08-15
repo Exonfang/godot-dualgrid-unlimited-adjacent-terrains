@@ -26,8 +26,6 @@ extends TileMapLayer
 		hide_display_layers()
 		_editor_display_layer_visible = false
 	else:
-		_sync_inherited_properties()
-		update_all_tiles()
 		show_display_layers()
 		_editor_display_layer_visible = true
 
@@ -170,11 +168,6 @@ func _ready() -> void:
 		hide_display_layers()
 
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_EDITOR_PRE_SAVE:
-		_cache_display_layers()
-
-
 func _get_configuration_warnings() -> PackedStringArray:
 	var warnings: PackedStringArray = []
 
@@ -193,8 +186,12 @@ func _set(property: StringName, value: Variant) -> bool:
 				tile_set.changed.disconnect(_update_display_layer_position_offset)
 			new_tile_set.changed.connect(_update_display_layer_position_offset)
 			tile_set = new_tile_set
+			_set_display_layer_property(property, new_tile_set)
 			update_configuration_warnings()
 			return true
+	
+	if INHERITED_PROPERTIES.has(property):
+		_set_display_layer_property(property, value)
 
 	return false
 
@@ -427,11 +424,6 @@ func _is_world_tile_occupied_by_source(world_coords: Vector2i, souce_id: int) ->
 	if souce_id == _NULL_SOURCE_ID:
 		return false
 	return get_cell_source_id(world_coords) == souce_id
-
-
-func _cache_display_layers() -> void:
-	_sync_inherited_properties()
-	update_all_tiles()
 
 
 ## Makes the display layers visible and hides the world grid.
