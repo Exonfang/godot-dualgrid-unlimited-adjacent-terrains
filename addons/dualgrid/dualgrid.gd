@@ -200,6 +200,7 @@ func _set(property: StringName, value: Variant) -> bool:
 func _update_cells(coords: Array[Vector2i], forced_cleanup: bool) -> void:
 	if forced_cleanup: return
 	if not Engine.is_editor_hint(): return
+	
 	for world_coords: Vector2i in coords:
 		_set_display_tiles_for_world_tile(world_coords)
 
@@ -220,6 +221,7 @@ func _setup_layers() -> void:
 
 	for layer: TileMapLayer in _mix_layers:
 		add_child(layer)
+		layer.owner = self
 
 	_sync_inherited_properties()
 	_set_display_layer_property(&"collision_enabled", display_collision_enabled)
