@@ -16,6 +16,8 @@ extends TileMapLayer
 ## [br]
 ## Changes to the DualGrid's properties, including but not limited to material and modulation (see [member INHERITED_PROPERTIES]) are passed down to the internal TileMapLayers for the display layers.
 ## [br]
+## The DualGrid's groups are copied to the internal display TileMapLayers when it is ready. If groups are changed at runtime, call [method sync_groups] to apply them.
+## [br]
 ## To set tiles in the world grid at runtime, do not use [method TileMapLayer.set_cell], use [method set_world_tile] instead
 ##
 ## @tutorial(GitHub Repo, with usage outlines): https://github.com/Exonfang/godot-dualgrid-unlimited-adjacent-terrains
@@ -32,6 +34,7 @@ extends TileMapLayer
 @export_tool_button("Refresh Display Layer Preview", "Anchor") var display_preview_refresh: Callable = func() -> void:
 	if _editor_display_layer_visible:
 		_sync_inherited_properties()
+		sync_groups()
 		update_all_tiles()
 
 ## Enables collision on the internal display TileMapLayers.
@@ -151,6 +154,8 @@ const _NULL_SOURCE_ID: int = -1
 const DEFAULT_WORLD_TILE_ATLAS_COORDS: Vector2i = Vector2i(0, 3)
 
 var _editor_display_layer_visible: bool = false
+## Groups that were copied from the DualGrid onto the display layers by [method sync_groups]
+var _inherited_groups: Array[StringName] = []
 ## A type-cast reference to the [member tile_set] as a DualGridTileSet if it is one
 var _dual_tile_set: DualGridTileSet:
 	get:
@@ -224,6 +229,7 @@ func _setup_layers() -> void:
 		layer.owner = self
 
 	_sync_inherited_properties()
+	sync_groups()
 	_set_display_layer_property(&"collision_enabled", display_collision_enabled)
 	_set_display_layer_property(&"navigation_enabled", display_navigation_enabled)
 
@@ -241,6 +247,25 @@ func _update_display_layer_position_offset() -> void:
 func _sync_inherited_properties() -> void:
 	for property: StringName in INHERITED_PROPERTIES:
 		_set_display_layer_property(property, get(property))
+
+
+## Copies the DualGrid's groups onto the internal display TileMapLayers, and removes previously copied groups the DualGrid is no longer in. Groups are synced automatically when the DualGrid is ready; call this after adding or removing groups at runtime.
+func sync_groups() -> void:
+	var current_groups: Array[StringName] = []
+	for group: StringName in get_groups():
+		# Skip Godot's internal groups, which all start with an underscore
+		if not String(group).begins_with("_"):
+			current_groups.append(group)
+
+	for layer: TileMapLayer in _mix_layers:
+		for group: StringName in _inherited_groups:
+			if not current_groups.has(group) and layer.is_in_group(group):
+				layer.remove_from_group(group)
+		for group: StringName in current_groups:
+			if not layer.is_in_group(group):
+				layer.add_to_group(group)
+
+	_inherited_groups = current_groups
 
 
 ## Updates the display layer tiles for the world tile
