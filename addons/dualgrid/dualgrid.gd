@@ -12,7 +12,7 @@ extends TileMapLayer
 ## [br]
 ## By using four display layers instead of just one, any tile can sit directly next to any other tile without requiring bespoke mixes for each combination. 
 ## [br]
-## If desired, bespoke mixes can easily be added for any combination of two terrains, which overwrite the generic mixes when the entire world neighborhood is occupied.
+## If desired, bespoke mixes can easily be added for any combination of two terrains, which overwrite the generic mixes when the entire world neighborhood is occupied. Variants of any tile can be configured via the `BespokeMixRule` or `TileVariantRule` within the `DualGridTileSet` resource.
 ## [br]
 ## Changes to the DualGrid's properties, including but not limited to material and modulation (see [member INHERITED_PROPERTIES]) are passed down to the internal TileMapLayers for the display layers.
 ## [br]
@@ -21,7 +21,6 @@ extends TileMapLayer
 ## To set tiles in the world grid at runtime, do not use [method TileMapLayer.set_cell], use [method set_world_tile] instead
 ##
 ## @tutorial(GitHub Repo, with usage outlines): https://github.com/Exonfang/godot-dualgrid-unlimited-adjacent-terrains
-
 
 @export_tool_button("Toggle Display Layer Preview", "GuiVisibilityVisible") var display_preview_toggle: Callable = func() -> void:
 	if _editor_display_layer_visible:
@@ -50,6 +49,13 @@ extends TileMapLayer
 		display_navigation_enabled = value
 		if is_instance_valid(_mix_layer_1):
 			_set_display_layer_property(&"navigation_enabled", value)
+
+## Seed used to pick between the full tile and its variants (see [TileVariantRule]), and between edge tiles and their edge variants. Variants are picked consistently for each display tile, so change the seed to get a different arrangement of variants.
+@export var variant_seed: int = 0:
+	set(value):
+		variant_seed = value
+		if _editor_display_layer_visible:
+			update_all_tiles()
 
 @export_group("Display Layer Ordering")
 ## When the display layer preview is enabled in the editor, enables changes to the layer ordering to update the preview. Enabling this for large tile maps could be quite laggy.
@@ -296,7 +302,14 @@ func _calculate_display_tiles(display_coords: Vector2i) -> void:
 
 	# With only one unique source id nearby the display only requires a single layer
 	if unique_source_ids.size() == 1:
-		_mix_layer_1.set_cell(display_coords, unique_source_ids[0], _calculate_display_tile(display_coords))
+		var source_id: int = unique_source_ids[0]
+		var atlas_coords: Vector2i = _calculate_display_tile(display_coords)
+		# The full tile can be swapped for one of its variants, and edge tiles for one of their edge variants
+		if atlas_coords == DualGridTileSet.FULL_TILE_ATLAS_COORDS and _dual_tile_set:
+			atlas_coords = _dual_tile_set.get_full_tile_variant(source_id, _get_variant_roll(display_coords, source_id))
+		elif _dual_tile_set:
+			atlas_coords = _get_edge_variant(display_coords, source_id, atlas_coords, 0, _dual_tile_set.get_edge_variant_offsets(source_id, false))
+		_mix_layer_1.set_cell(display_coords, source_id, atlas_coords)
 		return
 
 	# Check for bespoke mix between the two unique source ids nearby
@@ -306,6 +319,7 @@ func _calculate_display_tiles(display_coords: Vector2i) -> void:
 			var primary_id: int = mix_data[0]
 			var offset: int = mix_data[1]
 			var bespoke_tile_atlas_coords: Vector2i = _calculate_bespoke_display_tile(display_coords, primary_id, offset)
+			bespoke_tile_atlas_coords = _get_edge_variant(display_coords, primary_id, bespoke_tile_atlas_coords, offset, mix_data[2])
 			_mix_layer_1.set_cell(display_coords, primary_id, bespoke_tile_atlas_coords)
 			return
 
@@ -331,11 +345,26 @@ func _calculate_display_tiles(display_coords: Vector2i) -> void:
 			paint_layers[i].set_cell(display_coords, _NULL_SOURCE_ID)
 			continue
 
-		paint_layers[i].set_cell(
-			display_coords, 
-			source_id, 
-			_calculate_display_tile_for_source_id(display_coords, source_id, i)
-		)
+		var atlas_coords: Vector2i = _calculate_display_tile_for_source_id(display_coords, source_id, i)
+		# Generic mix tiles sit at the mixed offset, otherwise the tile is one of the main terrain tiles
+		if _dual_tile_set:
+			var generic_mix: bool = atlas_coords.x >= _MIXED_OFFSET
+			var base_offset: int = _MIXED_OFFSET if generic_mix else 0
+			atlas_coords = _get_edge_variant(display_coords, source_id, atlas_coords, base_offset, _dual_tile_set.get_edge_variant_offsets(source_id, generic_mix))
+		paint_layers[i].set_cell(display_coords, source_id, atlas_coords)
+
+
+## Returns a value in the range [0, 1) used to pick a full tile variant. The value is derived from the display coords so the same variant is picked every time the display tile is recalculated.
+func _get_variant_roll(display_coords: Vector2i, source_id: int) -> float:
+	return rand_from_seed(hash([display_coords, source_id, variant_seed]))[0] / 4294967296.0
+
+
+## Returns the atlas coords for an edge tile, swapped for one of its edge variants at [param offsets] if any are configured. [param base_offset] is the atlas X offset of the 4x4 set [param atlas_coords] is in. The pick is derived from the display coords and the tile, so the same edge variant is picked every time the display tile is recalculated.
+func _get_edge_variant(display_coords: Vector2i, source_id: int, atlas_coords: Vector2i, base_offset: int, offsets: Array) -> Vector2i:
+	if offsets.is_empty() or not _dual_tile_set:
+		return atlas_coords
+	var roll: float = rand_from_seed(hash([display_coords, source_id, atlas_coords, variant_seed]))[0] / 4294967296.0
+	return _dual_tile_set.get_edge_variant(source_id, atlas_coords, base_offset, offsets, roll)
 
 
 ## Checks if this configuration of a tile neighbourhood matches any of the layer order overrides. Returns null if no exception is found
