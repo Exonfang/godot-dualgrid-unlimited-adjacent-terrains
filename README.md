@@ -1,7 +1,7 @@
 # A DualGrid Tilemap System Supporting Unlimited Adjacent Terrains
 Adds a new "`DualGrid`" node (which extends `TileMapLayer`) to create a dual-grid tiling system for Godot which supports all mixes of adjacent terrains while still only requiring 28 unique tiles per terrain — **without requiring unique art for each bespoke mix**.
 
-Bespoke mixes can be optionally added for any combination of two terrains. In the example project, this is configured for the Purple terrain mixing with the Orange terrain.
+Bespoke mixes can be optionally added for any combination of two terrains. In the example project, this is configured for the Purple terrain mixing with the Orange terrain. Tile variants are also fully supported.
 
 This allows the following terrain sets to combine and create a world of endless terrain possibilities.
 
