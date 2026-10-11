@@ -119,11 +119,11 @@ This project would not have been possible without other developers who created t
 
 - [Dual Grid Tilemap System for Godot in GDScript by GlitchedinOrbit](https://github.com/GlitchedinOrbit/dual-grid-tilemap-system-godot-gdscript)
 - [Dual Grid Tilemap System in Godot by jess-hammer](https://github.com/jess-hammer/dual-grid-tilemap-system-godot)
-- [TileMapDual by pablogila](https://github.com/pablogila/TileMapDual) - Isometric or Hex tile support.
+- [TileMapDual by pablogila](https://github.com/pablogila/TileMapDual)
 - [Jess::codes's "Draw fewer tiles - by using a Dual-Grid system" Video](https://www.youtube.com/watch?v=jEWFSv3ivTg)
 - [This particular feature proposal comment in TileMapDual by megonemad1](https://github.com/pablogila/TileMapDual/issues/32)
 
 ## Credits
 
 - [Exonfang](https://github.com/Exonfang) contributed the original DualGrid implementation and tile variant functionality.
-- [Jesse-Goertzen](https://github.com/Jesse-Goertzen) contributed a significant refactor of the original DualGrid implementation into a proper addon, adding `BespokeMixRule` and `LayerOrderOrverrideRule`, and editor preview functionality.
+- [Jesse-Goertzen](https://github.com/Jesse-Goertzen) contributed a significant refactor of the original DualGrid implementation into a proper addon, adding `BespokeMixRule`, `LayerOrderOrverrideRule`, and editor preview functionality.
