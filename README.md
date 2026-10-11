@@ -49,7 +49,7 @@ Configure your `DualGridTileSet` just as you would configure a normal `TileSet`,
 - The second 4x4 tile set (atlas offset 4, the tiles from `(4,0)` to `(7,3)`) is always the main terrain **”generic mix”** with any other terrain that does **not** have a bespoke mix. **This tile set is also required**.
 - Additional bespoke mix and edge variant tile sets can occupy any atlas offset after the two required tile sets. 
 - Bespoke mixes of two terrains can be configured in either terrain’s tile set. See **Configuring Bespoke Mixes**.
-- The tile at `(2,1)` in each tile source is used as the full art tile for that terrain. All other tiles at _relative `(2,1)`_ in each 4x4 generic mix, bespoke mix, or any edge variant tile sets are **unused”**.
+- The tile at `(2,1)` in each tile source is used as the full art tile for that terrain. All other tiles at _relative `(2,1)`_ in each 4x4 generic mix, bespoke mix, or any edge variant tile sets are **unused**.
 - The tile at _relative `(0,3)`_ in each 4x4 dual grid tile set is **unused**, including in the two required tile sets.
 - Full tile variants can occupy **any unused position**, as they are specified by their full atlas coordinates. See **Configuring Tile Variants**.
 - Place tiles in the DualGrid using `DualGrid.set_world_tile` instead of `TileMapLayer.set_cell`, or by drawing any tile from a terrain's tile source in the `DualGrid` node via the editor.
