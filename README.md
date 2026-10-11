@@ -29,7 +29,7 @@ Other Dual Grid implementations either require each unique terrain to sit on the
 
 ## Example Project
 
-This repository contains an example Godot 4.4 project [in /example/](/example/) with seven terrains (and one bespoke mix) already configured using the addon.
+This repository contains an example Godot 4.4 project [in /example/](/example/) with seven terrains already configured using the addon.
 
 The example shows using the `LayerOrderOverrideRule` to create an exception to fix the example project's specific art.
 
