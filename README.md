@@ -62,13 +62,13 @@ If your tiles extend in the opposite direction as the example artwork, **Reverse
 
 To use physics layers from the Display Tiles, set **Display Collision Enabled** to true.
 
-### Configuring Bespoke Mixes
+## Configuring Bespoke Mixes
 
 **Bespoke mixes** are unique tile sets that **replace** the _generic mix_ edge tiles for the two specific terrains they are configured for. These allow you the **option** to create unique art for any specific transition, without the exponential art problem that requiring them creates.
 
 Create a `BespokeMixRule` within your `DualGridTileSet` for each bespoke mix, where the **Primary Source ID** is also the tile source ID where the 4x4 bespoke mix is located, and the **Secondary Source ID** is set to the specific terrain that the primary source ID terrain is mixing with. Then, specify the **Atlas Offset** to locate that bespoke mix set within the terrain for that source ID. _In the example project, in the Purple tile source, the Orange bespoke mix is offset by 8 (the grid from `(8,0)` to `(11,3)`), and the Red bespoke mix is offset by 12 (the grid from `(12,0)` to `(15,3)`)._
 
-### Tile Variants
+## Configuring Tile Variants
 
 Tile Variants can be configured to replace the art of any terrain via the `DualGridTileSet` resource. 
 
