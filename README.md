@@ -45,6 +45,13 @@ Configure your `DualGridTileSet` just as you would configure a normal `TileSet`,
 
 **Arrange each 4x4 dual grid tile set in a single horizontal row.** Each 4x4 dual grid tile set is identified by its x position offset as the **”Atlas Offset”**.
 
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="tile_guide.png" alt="Tile guide" width="100%"><br><em>Tile guide. 16x16 tiles, with neighborhood indication.</em></td>
+    <td align="center" width="50%"><img src="template.png" alt="Template" width="100%"><br><em>Example tile art template.</em></td>
+  </tr>
+</table>
+
 - The first 4x4 tile set (atlas offset 0, the grid from `(0,0)` to `(3,3)`) is always the main terrain mixed with no other terrain. **This tile set is required.**
 - The second 4x4 tile set (atlas offset 4, the tiles from `(4,0)` to `(7,3)`) is always the main terrain **”generic mix”** with any other terrain that does **not** have a bespoke mix. **This tile set is also required**.
 - Additional bespoke mix and edge variant tile sets can occupy any atlas offset after the two required tile sets. 
